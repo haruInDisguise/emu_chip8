@@ -34,6 +34,11 @@
 
 // -------------
 
+// Get word from memory at 'index'.
+// TODO: Add support for big endian hosts?
+#define MEM_GET_WORD(index)                                                    \
+    ((machine->mem[(index)] << 8) | machine->mem[(index) + 1])
+
 // Macros for iterating over the bitplane/mask and
 // execute code only for actually set planes
 #define BITPLANE_ITER_START(selected_bitplane)                                 \
@@ -202,8 +207,7 @@ static void CHIP8_screen_draw(const uint8_t reg_x, const uint8_t reg_y,
                                                             offset_y *
                                                             selected_bitplane;
         if (n == 0)
-            bitmask =
-                (machine->mem[mem_index] << 8) | (machine->mem[mem_index + 1]);
+            bitmask = MEM_GET_WORD(mem_index);
         else
             bitmask = machine->mem[mem_index];
 
@@ -386,8 +390,7 @@ void CHIP8_timer_tick() {
 
 const int32_t CHIP8_cpu_cycle() {
     // TODO: This assumes little endian...
-    uint16_t optcode =
-        (machine->mem[machine->pc] << 8) | machine->mem[machine->pc + 1];
+    uint16_t optcode = MEM_GET_WORD(machine->pc);
 
     // 12-bit address
     uint16_t nnn = optcode & 0x0fff;
@@ -482,7 +485,10 @@ const int32_t CHIP8_cpu_cycle() {
         print_opt("SE", "Skip next instruction if Vx = kk", xkk,
                   CHIP8_MODE_CH8);
         if (machine->reg[x] == kk)
-            machine->pc += 4;
+            if (MEM_GET_WORD(machine->pc + 1) == 0xf000)
+                machine->pc += 8;
+            else
+                machine->pc += 4;
         else
             machine->pc += 2;
         break;
@@ -490,7 +496,10 @@ const int32_t CHIP8_cpu_cycle() {
         print_opt("SNE", "Skip next instruction if Vx != kk", xkk,
                   CHIP8_MODE_CH8);
         if (machine->reg[x] != kk)
-            machine->pc += 4;
+            if (MEM_GET_WORD(machine->pc + 1) == 0xf000)
+                machine->pc += 8;
+            else
+                machine->pc += 4;
         else
             machine->pc += 2;
         break;
@@ -500,7 +509,10 @@ const int32_t CHIP8_cpu_cycle() {
             print_opt("SER", "Skip next instruction if Vx = Vy", xy,
                       CHIP8_MODE_CH8);
             if (machine->reg[x] == machine->reg[y])
-                machine->pc += 4;
+                if (MEM_GET_WORD(machine->pc + 1) == 0xf000)
+                    machine->pc += 8;
+                else
+                    machine->pc += 4;
             else
                 machine->pc += 2;
             break;
@@ -559,7 +571,7 @@ const int32_t CHIP8_cpu_cycle() {
             machine->reg[x] += machine->reg[y];
             break;
         case 0x05:
-            print_opt("SUB", "Set Vx = Vx - Vy. Set VF if Vy > Vx", xy,
+            print_opt("SUBY", "Set Vx = Vx - Vy. Set VF if Vy > Vx", xy,
                       CHIP8_MODE_CH8);
             machine->reg[0xf] = machine->reg[y] > machine->reg[x] ? 1 : 0;
             machine->reg[x] = machine->reg[x] - machine->reg[y];
@@ -571,7 +583,7 @@ const int32_t CHIP8_cpu_cycle() {
             machine->reg[x] >>= 1;
             break;
         case 0x07:
-            print_opt("SUB", "Set Vx = Vx - Vy. Set VF if Vx > Vy", xy,
+            print_opt("SUBX", "Set Vx = Vx - Vy. Set VF if Vx > Vy", xy,
                       CHIP8_MODE_CH8);
             machine->reg[0xf] = machine->reg[x] > machine->reg[y] ? 1 : 0;
             machine->reg[x] = machine->reg[y] - machine->reg[x];
@@ -593,7 +605,10 @@ const int32_t CHIP8_cpu_cycle() {
         print_opt("SKRNE", "Skip next instruction if Vx != Vy", xy,
                   CHIP8_MODE_CH8);
         if (machine->reg[x] != machine->reg[y])
-            machine->pc += 4;
+            if (MEM_GET_WORD(machine->pc + 1) == 0xf000)
+                machine->pc += 8;
+            else
+                machine->pc += 4;
         else
             machine->pc += 2;
         break;
@@ -636,7 +651,10 @@ const int32_t CHIP8_cpu_cycle() {
                       "Skip next instruction if key of value Vx is pressed", x,
                       CHIP8_MODE_CH8);
             if (machine->keys[machine->reg[x]] == CHIP8_KEY_PRESSED)
-                machine->pc += 4;
+                if (MEM_GET_WORD(machine->pc + 1) == 0xf000)
+                    machine->pc += 8;
+                else
+                    machine->pc += 4;
             else
                 machine->pc += 2;
             break;
@@ -645,7 +663,10 @@ const int32_t CHIP8_cpu_cycle() {
                       "Skip next instruction if key of value Vx is released", x,
                       CHIP8_MODE_CH8);
             if (machine->keys[machine->reg[x]] == CHIP8_KEY_RELEASED)
-                machine->pc += 4;
+                if (MEM_GET_WORD(machine->pc + 1) == 0xf000)
+                    machine->pc += 8;
+                else
+                    machine->pc += 4;
             else
                 machine->pc += 2;
             break;
@@ -654,7 +675,13 @@ const int32_t CHIP8_cpu_cycle() {
         }
         break;
     case 0xf000:
-        if (x == 1 && kk == 1) {
+        if (nnn == 0) {
+            print_opt("LDI EXT", "Set I to 16bit address", none,
+                      CHIP8_MODE_XH8);
+            machine->index_reg = MEM_GET_WORD(machine->pc + 2);
+            machine->pc += 4;
+            break;
+        } else if (x == 1 && kk == 1) {
             print_opt("BITPLANE", "Set the bitplane to the value of x", x,
                       CHIP8_MODE_XC8);
             machine->screen_bitplane = n;
