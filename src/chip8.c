@@ -32,30 +32,44 @@
 #define print_warn(format, ...) log_warn(format, __VA_ARGS__)
 // clang-format on
 
-// --------------------
+// -------------
 
 // Macros for iterating over the bitplane/mask and
 // execute code only for actually set planes
 #define BITPLANE_ITER_START(selected_bitplane)                                 \
     for (uint32_t bitplane_iter__index = 0;                                    \
          bitplane_iter__index < CHIP8_BITPLANE_BITS; bitplane_iter__index++) { \
-        uint32_t bitplane_iter__selected =                                     \
+        uint32_t bitplane_iter__is_selected =                                  \
             (machine->screen_bitplane >> bitplane_iter__index) & 0x1;          \
         (selected_bitplane) = bitplane_iter__index + 1;                        \
-        if (bitplane_iter__selected) {
+        if (bitplane_iter__is_selected) {
 
 #define BITPLANE_ITER_END                                                      \
     } /* is_selected */                                                        \
     } /* bitmask_iter__index */
 
-#define SCREEN_SET_PIXEL(x, y, value)                                          \
-    machine->screen[(y)*CHIP8_SCREEN_BUFFER_WIDTH + (x)] = (value)
-#define SCREEN_GET_PIXEL(x, y)                                                 \
-    machine->screen[(y)*CHIP8_SCREEN_BUFFER_WIDTH + (x)]
+// To be used inbetween BITPLANE_ITER_START/END
+// XOR the selected bitplane with value
+#define BITPLANE_TOGGLE(x, y, value)                                           \
+    machine->screen[(y)*CHIP8_SCREEN_BUFFER_WIDTH + (x)] ^=                    \
+        ((value) << bitplane_iter__index)
 
-// --------------------
+// Set in selected bitplane to value
+#define BITPLANE_SET(x, y, value)                                              \
+    machine->screen[((y)*CHIP8_SCREEN_BUFFER_WIDTH) + (x)] =                   \
+        (machine->screen[y * CHIP8_SCREEN_BUFFER_WIDTH + x] &                  \
+         ~(1 << bitplane_iter__index)) |                                       \
+        (((value) << bitplane_iter__index))
 
-#define CHIP8_MEM_SIZE 1024 * 4
+// Get the value of the selected bitplane
+#define BITPLANE_GET(x, y)                                                     \
+    (machine->screen[(y)*CHIP8_SCREEN_BUFFER_WIDTH + (x)] >>                   \
+     bitplane_iter__index) &                                                   \
+        0x01
+
+// -------------
+
+#define CHIP8_MEM_SIZE 1024 * 64
 #define CHIP8_MEM_OFFSET 512
 
 #define CHIP8_FONTSET_CHAR_SIZE 5
@@ -100,15 +114,14 @@ typedef enum {
 struct {
     uint8_t reg[CHIP8_REGISTERS];
 
-    /// Flag register for the HP48 extension
     uint8_t flag_reg[CHIP8_FLAG_REGISTERS];
     uint8_t mem[CHIP8_MEM_SIZE];
     uint8_t keys[CHIP8_KEYS];
 
     uint8_t screen[CHIP8_SCREEN_BUFFER_HEIGHT * CHIP8_SCREEN_BUFFER_WIDTH];
-    uint8_t screen_bitplane;
     uint8_t screen_width;
     uint8_t screen_height;
+    uint8_t screen_bitplane;
     uint8_t screen_is_hires;
     uint8_t screen_update_status;
 
@@ -175,60 +188,42 @@ static void CHIP8_screen_draw(const uint8_t reg_x, const uint8_t reg_y,
         if (pos_y + offset_y >= height)
             return;
 
+        // Iterate over the bitplanes and proceed to draw
+        // matches (i.e. b0111 will draw on bitplane 1, 2 and 3)
+        uint8_t selected_bitplane = 1;
+
+        BITPLANE_ITER_START(selected_bitplane);
+
+        // TODO: Support big endian host
+        // Select different graphics data, for individual bitplanes.
+        // Also considers sprite width
+        uint16_t bitmask;
+        const uint16_t mem_index = machine->index_reg + (sprite_width / 8) *
+                                                            offset_y *
+                                                            selected_bitplane;
+        if (n == 0)
+            bitmask =
+                (machine->mem[mem_index] << 8) | (machine->mem[mem_index + 1]);
+        else
+            bitmask = machine->mem[mem_index];
+
         for (uint32_t offset_x = 0; offset_x < sprite_width; offset_x++) {
             if (pos_x + offset_x >= width)
                 continue;
 
-            // Iterate over the bitplanes and proceed to draw
-            // matches (i.e. b0111 will draw on bitplane 1, 2 and 3)
-            uint8_t selected_bitplane = 1;
-
-            BITPLANE_ITER_START(selected_bitplane);
-
-            // TODO: Support big endian host
-            // Select different graphics data, for individual bitplanes.
-            // Also considers sprite width
-            uint16_t bitmask;
-            const uint16_t mem_index =
-                machine->index_reg +
-                (sprite_width / 8) * offset_y * selected_bitplane;
-            if (n == 0)
-                bitmask = (machine->mem[mem_index] << 8) |
-                          (machine->mem[mem_index + 1]);
-            else
-                bitmask = machine->mem[mem_index];
-
             const uint8_t bit =
                 ((bitmask >> (sprite_width - offset_x - 1)) & 0x1);
             const uint8_t old_value =
-                SCREEN_GET_PIXEL(pos_x + offset_x, pos_y + offset_y);
+                BITPLANE_GET(pos_x + offset_x, pos_y + offset_y);
 
-            uint8_t new_value = 0;
-
-            switch (selected_bitplane) {
-            case CHIP8_BITPLANE_0:
-                new_value = old_value ^ bit;
-                break;
-            case CHIP8_BITPLANE_1:
-                new_value = old_value ^ (bit << 1);
-                break;
-            case CHIP8_BITPLANE_2:
-                new_value = old_value ^ (bit << 2);
-                break;
-            case CHIP8_BITPLANE_3:
-                new_value = old_value ^ (bit << 3);
-                break;
-            }
-
-            SCREEN_SET_PIXEL(pos_x + offset_x, pos_y + offset_y, new_value);
+            BITPLANE_TOGGLE(pos_x + offset_x, pos_y + offset_y, bit);
 
             if (machine->reg[0xf] == 0 && bit == 1 && old_value > 0)
                 machine->reg[0xf] = 1;
-
-            BITPLANE_ITER_END;
         }
-    }
 
+        BITPLANE_ITER_END;
+    }
 }
 
 // Scroll the screen horizontally
@@ -237,17 +232,22 @@ static void CHIP8_screen_scroll(const int8_t amount,
     uint8_t width, height;
     CHIP8_screen_get_resolution(&width, &height);
 
+    // Iterate over the bitplanes and proceed to draw
+    // matches (i.e. b0111 will draw on bitplane 1, 2 and 3)
+    uint8_t selected_bitplane = 1;
+
+    BITPLANE_ITER_START(selected_bitplane);
+
     // TODO: This feels messy..
     switch (direction) {
     case CHIP8_SCROLL_LEFT:
         for (uint32_t y = 0; y < height; y++) {
             for (uint32_t x = 0; x < width; x++) {
                 if (x < amount || x + amount >= width)
-                    SCREEN_SET_PIXEL(x, y, 0);
-                else {
-                    SCREEN_SET_PIXEL(x - amount, y, SCREEN_GET_PIXEL(x, y));
-                    SCREEN_SET_PIXEL(x, y, 0);
-                }
+                    BITPLANE_SET(x, y, 0);
+                else
+                    BITPLANE_SET(x - amount, y, BITPLANE_GET(x, y));
+                BITPLANE_SET(x, y, 0);
             }
         }
         break;
@@ -255,10 +255,10 @@ static void CHIP8_screen_scroll(const int8_t amount,
         for (uint32_t y = 0; y < height; y++) {
             for (uint32_t x = width - 1; x > 0; x--) {
                 if (x + amount >= width || x < 0) {
-                    SCREEN_SET_PIXEL(x, y, 0);
+                    BITPLANE_SET(x, y, 0);
                 } else {
-                    SCREEN_SET_PIXEL(x + amount, y, SCREEN_GET_PIXEL(x, y));
-                    SCREEN_SET_PIXEL(x, y, 0);
+                    BITPLANE_SET(x + amount, y, BITPLANE_GET(x, y));
+                    BITPLANE_SET(x, y, 0);
                 }
             }
         }
@@ -266,11 +266,11 @@ static void CHIP8_screen_scroll(const int8_t amount,
     case CHIP8_SCROLL_UP:
         for (uint32_t x = 0; x < width; x++) {
             for (uint32_t y = 0; y < height; y++) {
-                if (y <= amount || y + amount > height)
-                    SCREEN_SET_PIXEL(x, y, 0);
-                else {
-                    SCREEN_SET_PIXEL(x, y - amount, SCREEN_GET_PIXEL(x, y));
-                    SCREEN_SET_PIXEL(x, y, 0);
+                if (y <= amount || y + amount > height) {
+                    BITPLANE_SET(x, y, 0);
+                } else {
+                    BITPLANE_SET(x, y - amount, BITPLANE_GET(x, y));
+                    BITPLANE_SET(x, y, 0);
                 }
             }
         }
@@ -279,16 +279,17 @@ static void CHIP8_screen_scroll(const int8_t amount,
         for (uint32_t x = 0; x < width - 1; x++) {
             for (uint32_t y = height - 1; y > 0; y--) {
                 if (y + amount < 0 || y >= height)
-                    SCREEN_SET_PIXEL(x, y, 0);
+                    BITPLANE_SET(x, y, 0);
                 else {
-                    SCREEN_SET_PIXEL(y, y + amount, SCREEN_GET_PIXEL(x, y));
-                    SCREEN_SET_PIXEL(x, y, 0);
+                    BITPLANE_SET(x, y + amount, BITPLANE_GET(x, y));
+                    BITPLANE_SET(x, y, 0);
                 }
             }
         }
     }
-}
 
+    BITPLANE_ITER_END;
+}
 
 const uint8_t CHIP8_screen_get_update_status(void) {
     return machine->screen_update_status;
@@ -359,8 +360,7 @@ const uint32_t CHIP8_load_from_path(const char *path) {
     if (file == NULL)
         return 1;
 
-    // TODO: Make sure that the rom size does not exceed the memory
-    // buffer
+    // TODO: Make sure that the rom fits into memory
     fread(machine->mem + CHIP8_MEM_OFFSET, 1,
           CHIP8_MEM_SIZE - CHIP8_MEM_OFFSET - 1, file);
 
