@@ -80,7 +80,7 @@
 #define CHIP8_FONTSET_CHAR_SIZE 5
 #define CHIP8_FONTSET_CHAR_SIZE_SUPER 10
 #define CHIP8_FONTSET_SIZE 16
-#define CHIP8_FONTSET_SIZE_SUPER 10
+#define CHIP8_FONTSET_SIZE_SUPER 16
 #define CHIP8_FONTSET_OFFSET 0
 #define CHIP8_FONTSET_OFFSET_SUPER CHIP8_FONTSET_SIZE *CHIP8_FONTSET_CHAR_SIZE
 
@@ -157,18 +157,25 @@ static uint8_t fontset[CHIP8_FONTSET_SIZE * CHIP8_FONTSET_CHAR_SIZE] = {
     0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
     0xF0, 0x80, 0xF0, 0x80, 0x80, // F
 };
+// stolen from: https://github.com/wernsey/chip8/blob/master/chip8.c
 static uint8_t
     fontset_super[CHIP8_FONTSET_SIZE_SUPER * CHIP8_FONTSET_CHAR_SIZE_SUPER] = {
-        0x3C, 0x7E, 0xE7, 0xC3, 0xC3, 0xC3, 0xC3, 0xE7, 0x7E, 0x3C, // 0
-        0x18, 0x38, 0x58, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x3C, // 1
-        0x3E, 0x7F, 0xC3, 0x06, 0x0C, 0x18, 0x30, 0x60, 0xFF, 0xFF, // 2
-        0x3C, 0x7E, 0xC3, 0x03, 0x0E, 0x0E, 0x03, 0xC3, 0x7E, 0x3C, // 3
-        0x06, 0x0E, 0x1E, 0x36, 0x66, 0xC6, 0xFF, 0xFF, 0x06, 0x06, // 4
-        0xFF, 0xFF, 0xC0, 0xC0, 0xFC, 0xFE, 0x03, 0xC3, 0x7E, 0x3C, // 5
-        0x3E, 0x7C, 0xC0, 0xC0, 0xFC, 0xFE, 0xC3, 0xC3, 0x7E, 0x3C, // 6
-        0xFF, 0xFF, 0x03, 0x06, 0x0C, 0x18, 0x30, 0x60, 0x60, 0x60, // 7
-        0x3C, 0x7E, 0xC3, 0xC3, 0x7E, 0x7E, 0xC3, 0xC3, 0x7E, 0x3C, // 8
-        0x3C, 0x7E, 0xC3, 0xC3, 0x7F, 0x3F, 0x03, 0x03, 0x3E, 0x7C  // 9
+/* '0' */ 0x7C, 0x82, 0x82, 0x82, 0x82, 0x82, 0x82, 0x82, 0x7C, 0x00,
+/* '1' */ 0x08, 0x18, 0x38, 0x08, 0x08, 0x08, 0x08, 0x08, 0x3C, 0x00,
+/* '2' */ 0x7C, 0x82, 0x02, 0x02, 0x04, 0x18, 0x20, 0x40, 0xFE, 0x00,
+/* '3' */ 0x7C, 0x82, 0x02, 0x02, 0x3C, 0x02, 0x02, 0x82, 0x7C, 0x00,
+/* '4' */ 0x84, 0x84, 0x84, 0x84, 0xFE, 0x04, 0x04, 0x04, 0x04, 0x00,
+/* '5' */ 0xFE, 0x80, 0x80, 0x80, 0xFC, 0x02, 0x02, 0x82, 0x7C, 0x00,
+/* '6' */ 0x7C, 0x82, 0x80, 0x80, 0xFC, 0x82, 0x82, 0x82, 0x7C, 0x00,
+/* '7' */ 0xFE, 0x02, 0x04, 0x08, 0x10, 0x20, 0x20, 0x20, 0x20, 0x00,
+/* '8' */ 0x7C, 0x82, 0x82, 0x82, 0x7C, 0x82, 0x82, 0x82, 0x7C, 0x00,
+/* '9' */ 0x7C, 0x82, 0x82, 0x82, 0x7E, 0x02, 0x02, 0x82, 0x7C, 0x00,
+/* 'A' */ 0x10, 0x28, 0x44, 0x82, 0x82, 0xFE, 0x82, 0x82, 0x82, 0x00,
+/* 'B' */ 0xFC, 0x82, 0x82, 0x82, 0xFC, 0x82, 0x82, 0x82, 0xFC, 0x00,
+/* 'C' */ 0x7C, 0x82, 0x80, 0x80, 0x80, 0x80, 0x80, 0x82, 0x7C, 0x00,
+/* 'D' */ 0xFC, 0x82, 0x82, 0x82, 0x82, 0x82, 0x82, 0x82, 0xFC, 0x00,
+/* 'E' */ 0xFE, 0x80, 0x80, 0x80, 0xF8, 0x80, 0x80, 0x80, 0xFE, 0x00,
+/* 'F' */ 0xFE, 0x80, 0x80, 0x80, 0xF8, 0x80, 0x80, 0x80, 0x80, 0x00,
 };
 
 static inline uint8_t CHIP8_get_rand(void) { return rand() % 255; }
@@ -270,7 +277,7 @@ static void CHIP8_screen_scroll(const int8_t amount,
     case CHIP8_SCROLL_UP:
         for (uint32_t x = 0; x < width; x++) {
             for (uint32_t y = 0; y < height; y++) {
-                if (y <= amount || y + amount > height) {
+                if (y < amount || y + amount >= height) {
                     BITPLANE_SET(x, y, 0);
                 } else {
                     BITPLANE_SET(x, y - amount, BITPLANE_GET(x, y));
@@ -278,11 +285,11 @@ static void CHIP8_screen_scroll(const int8_t amount,
                 }
             }
         }
-    case CHIP8_SCROLL_DOWN:
         break;
+    case CHIP8_SCROLL_DOWN:
         for (uint32_t x = 0; x < width - 1; x++) {
             for (uint32_t y = height - 1; y > 0; y--) {
-                if (y + amount < 0 || y >= height)
+                if (y + amount >= height || y < 0)
                     BITPLANE_SET(x, y, 0);
                 else {
                     BITPLANE_SET(x, y + amount, BITPLANE_GET(x, y));
@@ -290,6 +297,7 @@ static void CHIP8_screen_scroll(const int8_t amount,
                 }
             }
         }
+        break;
     }
 
     BITPLANE_ITER_END;
@@ -409,20 +417,6 @@ const int32_t CHIP8_cpu_cycle() {
     switch (optcode & 0xf000) {
     case 0x0000:
         switch (kk) {
-        case 0xc0:
-            print_opt("SCRD", "Scroll screen down by n pixels", n,
-                      CHIP8_MODE_SC8);
-            CHIP8_screen_scroll(n, CHIP8_SCROLL_DOWN);
-            machine->screen_update_status = 1;
-            machine->pc += 2;
-            break;
-        case 0xd0:
-            print_opt("SCRU", "Scroll screen up by n pixels", n,
-                      CHIP8_MODE_XC8);
-            CHIP8_screen_scroll(n, CHIP8_SCROLL_UP);
-            machine->screen_update_status = 1;
-            machine->pc += 2;
-            break;
         case 0xe0:
             print_opt("CLS", "Clear the screen", none, CHIP8_MODE_CH8);
             memset(machine->screen, 0, sizeof(machine->screen));
@@ -466,10 +460,22 @@ const int32_t CHIP8_cpu_cycle() {
             machine->pc += 2;
             break;
         default:
-            print_opt("SYS", "Legacy instruction. Not supported", nnn,
-                      CHIP8_MODE_CH8);
-            print_warn("%s", "SYS: Legacy instruction. Not supported");
-            goto invalid_optcode;
+            if(y == 0xc) {
+                print_opt("SCRD", "Scroll screen down by n pixels", n,
+                          CHIP8_MODE_SC8);
+                CHIP8_screen_scroll(n, CHIP8_SCROLL_DOWN);
+                machine->screen_update_status = 1;
+                machine->pc += 2;
+                break;
+            } else if(y == 0xd) {
+                print_opt("SCRU", "Scroll screen up by n pixels", n,
+                          CHIP8_MODE_XC8);
+                CHIP8_screen_scroll(n, CHIP8_SCROLL_UP);
+                machine->screen_update_status = 1;
+                machine->pc += 2;
+                break;
+            } else
+                goto invalid_optcode;
         }
         break;
     case 0x1000:
@@ -485,8 +491,8 @@ const int32_t CHIP8_cpu_cycle() {
         print_opt("SE", "Skip next instruction if Vx = kk", xkk,
                   CHIP8_MODE_CH8);
         if (machine->reg[x] == kk)
-            if (MEM_GET_WORD(machine->pc + 1) == 0xf000)
-                machine->pc += 8;
+            if (MEM_GET_WORD(machine->pc + 2) == 0xf000)
+                machine->pc += 6;
             else
                 machine->pc += 4;
         else
@@ -496,8 +502,8 @@ const int32_t CHIP8_cpu_cycle() {
         print_opt("SNE", "Skip next instruction if Vx != kk", xkk,
                   CHIP8_MODE_CH8);
         if (machine->reg[x] != kk)
-            if (MEM_GET_WORD(machine->pc + 1) == 0xf000)
-                machine->pc += 8;
+            if (MEM_GET_WORD(machine->pc + 2) == 0xf000)
+                machine->pc += 6;
             else
                 machine->pc += 4;
         else
@@ -509,8 +515,8 @@ const int32_t CHIP8_cpu_cycle() {
             print_opt("SER", "Skip next instruction if Vx = Vy", xy,
                       CHIP8_MODE_CH8);
             if (machine->reg[x] == machine->reg[y])
-                if (MEM_GET_WORD(machine->pc + 1) == 0xf000)
-                    machine->pc += 8;
+                if (MEM_GET_WORD(machine->pc + 2) == 0xf000)
+                    machine->pc += 6;
                 else
                     machine->pc += 4;
             else
@@ -605,8 +611,8 @@ const int32_t CHIP8_cpu_cycle() {
         print_opt("SKRNE", "Skip next instruction if Vx != Vy", xy,
                   CHIP8_MODE_CH8);
         if (machine->reg[x] != machine->reg[y])
-            if (MEM_GET_WORD(machine->pc + 1) == 0xf000)
-                machine->pc += 8;
+            if (MEM_GET_WORD(machine->pc + 2) == 0xf000)
+                machine->pc += 6;
             else
                 machine->pc += 4;
         else
@@ -651,8 +657,8 @@ const int32_t CHIP8_cpu_cycle() {
                       "Skip next instruction if key of value Vx is pressed", x,
                       CHIP8_MODE_CH8);
             if (machine->keys[machine->reg[x]] == CHIP8_KEY_PRESSED)
-                if (MEM_GET_WORD(machine->pc + 1) == 0xf000)
-                    machine->pc += 8;
+                if (MEM_GET_WORD(machine->pc + 2) == 0xf000)
+                    machine->pc += 6;
                 else
                     machine->pc += 4;
             else
@@ -679,6 +685,7 @@ const int32_t CHIP8_cpu_cycle() {
             print_opt("LDI EXT", "Set I to 16bit address", none,
                       CHIP8_MODE_XH8);
             machine->index_reg = MEM_GET_WORD(machine->pc + 2);
+            printf("optcode=%4x\n", machine->index_reg);
             machine->pc += 4;
             break;
         } else if (x == 1 && kk == 1) {
