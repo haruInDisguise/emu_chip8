@@ -7,7 +7,7 @@ LDFLAGS = -lSDL2
 TARGET = emu_chip8
 OUT = build
 
-SRC = src/chip8_emu.c	\
+SRC = src/emu_chip8.c	\
 	  src/chip8.c		\
 	  src/log.c			\
 	  src/backend_sdl.c \
@@ -24,9 +24,6 @@ build: $(OBJ)
 	@echo "[BUILD] Executing debug build"
 	$(CC) $(LDFLAGS) $(OBJ) -o "$(OUT)/$(TARGET)"
 
-gdb:
-	gdb --args "$(OUT)/$(TARGET)" "./roms/demos/Zero Demo [zeroZshadow, 2007].ch8"
-
 clean:
 	rm -rf $(OUT)
 
@@ -36,5 +33,5 @@ clean:
 
 $(OUT)/%.o: %.c
 	mkdir -p ${dir $@}
-	$(CC) -c $(CFLAGS) $< -o $@
+	$(CC) -c $(CFLAGS_DEBUG) $< -o $@
 
