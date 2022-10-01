@@ -1,37 +1,35 @@
-# CHIP8 Interpreter
+# CHIP8 Emulator
 
-This is a simple CHIP8 interpreter that aims for consistent, readable and easily hackable code (<insert other flattering adjectives here>). This project focuses on the (CHIP-XO extension-set), used by the [Octo assembler/interpreter](https://github.com/JohnEarnest/Octo).
-It's my first "larger" Project in C, and therefore will certainly leave some things to be desired.
+This is a simple CHIP8 interpreter/emulator that focuses on the CHIP-XO extension-set, used by the [Octo assembler/interpreter](https://github.com/JohnEarnest/Octo).
 
-## Implemented
+It's my first "larger" Project in C, and therefore will certainly leave some things to be desired. Feedback is always welcome!
 
-- Support for 4bit bitmaps (for a total of 16 different colors), extending upon Octo, which currently only supports 2bit bitmaps (However, the standart [does mention this addition](https://github.com/JohnEarnest/Octo/blob/gh-pages/docs/XO-ChipSpecification.md#Bitplanes))
-- Scrolling the screen (and scrolling individual bitmaps)
-- Keyboard input
-- Extended memory (64kb)
-- High resolution (128 x 64)
+### Features and TODO
 
-## TODO
+- [x] Support for 4bit bitmaps (for a total of 16 different colors), extending upon Octo (However, the standart [does mention this addition](https://github.com/JohnEarnest/Octo/blob/gh-pages/docs/XO-ChipSpecification.md#Bitplanes))
+- [x] Keyboard input
+- [x] Extended memory (64kb)
+- [x] Scrolling (also supports indivdual bitmaps)
 
-- Audio
-- HP48 Flag registers (optcodes print a warning)
+- [ ] Basic commandline options (i.e. speed, custom font, colorscheme...)
+- [ ] Audio
+- [ ] HP48 Flag registers (optcode prints a warning)
+- [ ] Add a custom assembler with support for 4bit bitmaps (veeery TODO)
 
-## Requires
+## How to build, run and customize
+What is required:
 
 - An accessible [SDL2](https://www.libsdl.org/) installation
-- Roms can be found... online or [here](https://github.com/kripod/chip8-roms) and (here)[https://github.com/JohnEarnest/Octo/tree/gh-pages/examples]
+- Roms can be found... online or [here](https://github.com/kripod/chip8-roms) and [here](https://github.com/JohnEarnest/Octo/tree/gh-pages/examples)
+- This code should work just fine on Windows, however it has only been tested on an Arch Linux installation.
 
-# How to build, run and customize
-Just run `make`. Note that [clang](https://clang.llvm.org/) is used as the default compiler.
+You can set a log level by exporting/setting the `LOG_LEVEL` ENV. Possible values are: `all, debug, info, warn, error, none`. Defaults to `all`.
 
-Invoke it by typing `./build/emu_chip8 <path to rom here>`. You can set a log level by exporting/setting the `LOG_LEVEL` ENV. Possible values are: `all, debug, info, warn, error, none`. It defaults to `debug`.
-
-The entry point is `src/emu_chip8.c`. It runs the main loop and times all calls to the CHIP8/render backend.
-Make used debug mode flags by default.
+The interpreter prints each executed instruction and relevant register values to the terminal (using the debug log level). A slow terminal might hinder program execution.
 
 ## References and Resources
 
 - [Guide to making a CHIP-8 emulator](https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#add-super-chip-support): A really well written guide, that aims to explain architecture, rather then code.
-- [Cowgod's CHIP8 Technical Reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#8xy6)
-- [SCHIP Reference](http://devernay.free.fr/hacks/chip8/schip.txt)
-- [XO Reference](http://johnearnest.github.io/Octo/docs/XO-ChipSpecification.html]: A technical reference for the XO Extension set, which is used by the (Octo)[https://github.com/JohnEarnest/Octo]
+- [CHIP8 Reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#8xy6)
+- [Super-CHIP Reference](http://devernay.free.fr/hacks/chip8/schip.txt)
+- [CHIP-XO Reference](http://johnearnest.github.io/Octo/docs/XO-ChipSpecification.html): A technical reference for the XO Extension set, which is used by the [Octo](https://github.com/JohnEarnest/Octo)
