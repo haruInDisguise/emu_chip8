@@ -17,6 +17,11 @@
         }                                                                      \
     } while (0);
 
+#define SET_COLOR(renderer, value)                                             \
+    SDL_SetRenderDrawColor((renderer), (uint8_t)(((value) >> 16) & 0xff),       \
+                           (uint8_t)(((value) >> 8) & 0xff),                   \
+                           (uint8_t)(value) & 0xff, 0xff)
+
 static SDL_Window *win = NULL;
 static SDL_Renderer *renderer = NULL;
 
@@ -25,7 +30,8 @@ static SDL_Rect rect;
 uint32_t CHIP8_backend_init(void) {
     SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO);
 
-    win = SDL_CreateWindow("emu_chip8 - press <ESC> to quit", 0, 0, WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_OPENGL);
+    win = SDL_CreateWindow("emu_chip8 - press <ESC> to quit", 0, 0, WIN_WIDTH,
+                           WIN_HEIGHT, SDL_WINDOW_OPENGL);
     ASSERT_SDL(win == NULL);
 
     renderer = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
@@ -40,9 +46,9 @@ void CHIP8_backend_exit(void) {
 }
 
 uint32_t CHIP8_backend_render(void) {
-    SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255);
+    // background / color 0
+    SET_COLOR(renderer, 0x282828);
     SDL_RenderClear(renderer);
-    SDL_SetRenderDrawColor(renderer, 155, 155, 155, 255);
 
     uint8_t width, height;
     CHIP8_screen_get_resolution(&width, &height);
@@ -53,7 +59,58 @@ uint32_t CHIP8_backend_render(void) {
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            if (CHIP8_screen_get_pixel(x, y) > 0) {
+            uint8_t pixel = CHIP8_screen_get_pixel(x, y);
+
+            if (pixel) {
+                // Colorscheme taken from: https://packagecontrol.io/packages/gruvbox#Palette
+                switch (pixel) {
+                case 1:
+                    SET_COLOR(renderer, 0x928374);
+                    break;
+                case 2:
+                    SET_COLOR(renderer, 0xcc241d);
+                    break;
+                case 3:
+                    SET_COLOR(renderer, 0xfb4934);
+                    break;
+                case 4:
+                    SET_COLOR(renderer, 0x98971a);
+                    break;
+                case 5:
+                    SET_COLOR(renderer, 0xb8bb26);
+                    break;
+                case 6:
+                    SET_COLOR(renderer, 0xd79921);
+                    break;
+                case 7:
+                    SET_COLOR(renderer, 0xfabd2f);
+                    break;
+                case 8:
+                    SET_COLOR(renderer, 0x458588);
+                    break;
+                case 9:
+                    SET_COLOR(renderer, 0x83a598);
+                    break;
+                case 10:
+                    SET_COLOR(renderer, 0xb16286);
+                    break;
+                case 11:
+                    SET_COLOR(renderer, 0xd3869b);
+                    break;
+                case 12:
+                    SET_COLOR(renderer, 0x689d6a);
+                    break;
+                case 13:
+                    SET_COLOR(renderer, 0x8ec07);
+                    break;
+                case 14:
+                    SET_COLOR(renderer, 0xa89984);
+                    break;
+                case 15:
+                    SET_COLOR(renderer, 0xebdbb2);
+                    break;
+                }
+
                 rect.x = x * pixel_size;
                 rect.y = y * pixel_size;
                 SDL_RenderFillRect(renderer, &rect);
@@ -134,4 +191,3 @@ uint32_t CHIP8_backend_handle_events(void) {
 
     return 0;
 }
-
