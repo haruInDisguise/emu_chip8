@@ -10,14 +10,16 @@
 #include <time.h>
 
 // TODO: Different hardware might have different clock resolutions...
-#define CHIP8_TIMER_CPU_HZ 2000
-#define CHIP8_TIMER_CPU_RATE_NSEC (int)(1000000000 / CHIP8_TIMER_CPU_HZ)
+#define INT_PER_FRAME 20
+
+#define CHIP8_TIMER_RENDER_HZ 60
+#define CHIP8_TIMER_RENDER_RATE_NSEC (int)(1000000000 / CHIP8_TIMER_RENDER_HZ)
 
 #define CHIP8_TIMER_TIMER_HZ 60
 #define CHIP8_TIMER_TIMER_RATE_NSEC (int)(1000000000 / CHIP8_TIMER_TIMER_HZ)
 
-#define CHIP8_TIMER_RENDER_HZ 60
-#define CHIP8_TIMER_RENDER_RATE_NSEC (int)(1000000000 / CHIP8_TIMER_RENDER_HZ)
+#define CHIP8_TIMER_CPU_HZ (INT_PER_FRAME * CHIP8_TIMER_RENDER_HZ)
+#define CHIP8_TIMER_CPU_RATE_NSEC (int)(1000000000 / CHIP8_TIMER_CPU_HZ)
 
 void log_func_impl(LOG_LEVEL level, char *str) {
     switch (level) {
@@ -66,15 +68,9 @@ uint32_t CHIP8_run(void) {
         if (is_running_chip && diff_tick >= CHIP8_TIMER_CPU_RATE_NSEC) {
             int32_t cpu_status = CHIP8_cpu_cycle();
 
-            // Reached end of progam. Restart
             switch (cpu_status) {
             case -1: // invalid optcode
-                is_running = 0;
-                exit_code = 1;
-                break;
-            case 0: // normal execution
-                break;
-            case 1: // optcode: 0x0 end of rom?
+                exit(1);
             case 2: // optcode: exit
                 is_running = 0;
                 break;
