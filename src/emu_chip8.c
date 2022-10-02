@@ -10,7 +10,7 @@
 #include <time.h>
 
 // TODO: Different hardware might have different clock resolutions...
-#define INT_PER_FRAME 20
+#define INT_PER_FRAME 50
 
 #define CHIP8_TIMER_RENDER_HZ 60
 #define CHIP8_TIMER_RENDER_RATE_NSEC (int)(1000000000 / CHIP8_TIMER_RENDER_HZ)

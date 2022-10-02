@@ -35,7 +35,6 @@
 // -------------
 
 // Get word from memory at 'index'.
-// TODO: Add support for big endian hosts?
 #define MEM_GET_WORD(index)                                                    \
     ((machine->mem[(index)] << 8) | machine->mem[(index) + 1])
 
@@ -160,22 +159,38 @@ static uint8_t fontset[CHIP8_FONTSET_SIZE * CHIP8_FONTSET_CHAR_SIZE] = {
 // stolen from: https://github.com/wernsey/chip8/blob/master/chip8.c
 static uint8_t
     fontset_super[CHIP8_FONTSET_SIZE_SUPER * CHIP8_FONTSET_CHAR_SIZE_SUPER] = {
-/* '0' */ 0x7C, 0x82, 0x82, 0x82, 0x82, 0x82, 0x82, 0x82, 0x7C, 0x00,
-/* '1' */ 0x08, 0x18, 0x38, 0x08, 0x08, 0x08, 0x08, 0x08, 0x3C, 0x00,
-/* '2' */ 0x7C, 0x82, 0x02, 0x02, 0x04, 0x18, 0x20, 0x40, 0xFE, 0x00,
-/* '3' */ 0x7C, 0x82, 0x02, 0x02, 0x3C, 0x02, 0x02, 0x82, 0x7C, 0x00,
-/* '4' */ 0x84, 0x84, 0x84, 0x84, 0xFE, 0x04, 0x04, 0x04, 0x04, 0x00,
-/* '5' */ 0xFE, 0x80, 0x80, 0x80, 0xFC, 0x02, 0x02, 0x82, 0x7C, 0x00,
-/* '6' */ 0x7C, 0x82, 0x80, 0x80, 0xFC, 0x82, 0x82, 0x82, 0x7C, 0x00,
-/* '7' */ 0xFE, 0x02, 0x04, 0x08, 0x10, 0x20, 0x20, 0x20, 0x20, 0x00,
-/* '8' */ 0x7C, 0x82, 0x82, 0x82, 0x7C, 0x82, 0x82, 0x82, 0x7C, 0x00,
-/* '9' */ 0x7C, 0x82, 0x82, 0x82, 0x7E, 0x02, 0x02, 0x82, 0x7C, 0x00,
-/* 'A' */ 0x10, 0x28, 0x44, 0x82, 0x82, 0xFE, 0x82, 0x82, 0x82, 0x00,
-/* 'B' */ 0xFC, 0x82, 0x82, 0x82, 0xFC, 0x82, 0x82, 0x82, 0xFC, 0x00,
-/* 'C' */ 0x7C, 0x82, 0x80, 0x80, 0x80, 0x80, 0x80, 0x82, 0x7C, 0x00,
-/* 'D' */ 0xFC, 0x82, 0x82, 0x82, 0x82, 0x82, 0x82, 0x82, 0xFC, 0x00,
-/* 'E' */ 0xFE, 0x80, 0x80, 0x80, 0xF8, 0x80, 0x80, 0x80, 0xFE, 0x00,
-/* 'F' */ 0xFE, 0x80, 0x80, 0x80, 0xF8, 0x80, 0x80, 0x80, 0x80, 0x00,
+        /* '0' */ 0x7C, 0x82, 0x82, 0x82, 0x82,
+        0x82,           0x82, 0x82, 0x7C, 0x00,
+        /* '1' */ 0x08, 0x18, 0x38, 0x08, 0x08,
+        0x08,           0x08, 0x08, 0x3C, 0x00,
+        /* '2' */ 0x7C, 0x82, 0x02, 0x02, 0x04,
+        0x18,           0x20, 0x40, 0xFE, 0x00,
+        /* '3' */ 0x7C, 0x82, 0x02, 0x02, 0x3C,
+        0x02,           0x02, 0x82, 0x7C, 0x00,
+        /* '4' */ 0x84, 0x84, 0x84, 0x84, 0xFE,
+        0x04,           0x04, 0x04, 0x04, 0x00,
+        /* '5' */ 0xFE, 0x80, 0x80, 0x80, 0xFC,
+        0x02,           0x02, 0x82, 0x7C, 0x00,
+        /* '6' */ 0x7C, 0x82, 0x80, 0x80, 0xFC,
+        0x82,           0x82, 0x82, 0x7C, 0x00,
+        /* '7' */ 0xFE, 0x02, 0x04, 0x08, 0x10,
+        0x20,           0x20, 0x20, 0x20, 0x00,
+        /* '8' */ 0x7C, 0x82, 0x82, 0x82, 0x7C,
+        0x82,           0x82, 0x82, 0x7C, 0x00,
+        /* '9' */ 0x7C, 0x82, 0x82, 0x82, 0x7E,
+        0x02,           0x02, 0x82, 0x7C, 0x00,
+        /* 'A' */ 0x10, 0x28, 0x44, 0x82, 0x82,
+        0xFE,           0x82, 0x82, 0x82, 0x00,
+        /* 'B' */ 0xFC, 0x82, 0x82, 0x82, 0xFC,
+        0x82,           0x82, 0x82, 0xFC, 0x00,
+        /* 'C' */ 0x7C, 0x82, 0x80, 0x80, 0x80,
+        0x80,           0x80, 0x82, 0x7C, 0x00,
+        /* 'D' */ 0xFC, 0x82, 0x82, 0x82, 0x82,
+        0x82,           0x82, 0x82, 0xFC, 0x00,
+        /* 'E' */ 0xFE, 0x80, 0x80, 0x80, 0xF8,
+        0x80,           0x80, 0x80, 0xFE, 0x00,
+        /* 'F' */ 0xFE, 0x80, 0x80, 0x80, 0xF8,
+        0x80,           0x80, 0x80, 0x80, 0x00,
 };
 
 static inline uint8_t CHIP8_get_rand(void) { return rand() % 255; }
@@ -191,28 +206,25 @@ static void CHIP8_screen_draw(const uint8_t reg_x, const uint8_t reg_y,
     // Reset flag register (i.e. collision detection)
     machine->reg[0x0f] = 0;
 
-    // n == 0 indicates 16x16 sprite drawing mode
     const uint8_t sprite_height = n == 0 ? 16 : n;
     const uint8_t sprite_width = n == 0 ? 16 : 8;
+
+    // Iterate over the bitplanes and proceed to draw
+    // matches (i.e. b0111 will draw on bitplane 1, 2 and 3)
+    uint8_t selected_bitplane;
+
+    BITPLANE_ITER_START(selected_bitplane);
 
     // Draw the actual sprite
     for (uint32_t offset_y = 0; offset_y < sprite_height; offset_y++) {
         if (pos_y + offset_y >= height)
             return;
 
-        // Iterate over the bitplanes and proceed to draw
-        // matches (i.e. b0111 will draw on bitplane 1, 2 and 3)
-        uint8_t selected_bitplane = 1;
-
-        BITPLANE_ITER_START(selected_bitplane);
-
-        // TODO: Support big endian host
         // Select different graphics data, for individual bitplanes.
-        // Also considers sprite width
         uint16_t bitmask;
-        const uint16_t mem_index = machine->index_reg + (sprite_width / 8) *
-                                                            offset_y *
-                                                            selected_bitplane;
+        const uint16_t mem_index = machine->index_reg +
+            (selected_bitplane - 1) * sprite_height +
+            (sprite_width / 8) * offset_y;
         if (n == 0)
             bitmask = MEM_GET_WORD(mem_index);
         else
@@ -229,12 +241,13 @@ static void CHIP8_screen_draw(const uint8_t reg_x, const uint8_t reg_y,
 
             BITPLANE_TOGGLE(pos_x + offset_x, pos_y + offset_y, bit);
 
-            if (machine->reg[0xf] == 0 && bit == 1 && old_value > 0)
+            if (bit == 1 && old_value > 0)
                 machine->reg[0xf] = 1;
         }
 
-        BITPLANE_ITER_END;
     }
+
+    BITPLANE_ITER_END;
 }
 
 // Scroll the screen horizontally
@@ -416,6 +429,21 @@ const int32_t CHIP8_cpu_cycle() {
     // http://johnearnest.github.io/Octo/docs/XO-ChipSpecification.html
     switch (optcode & 0xf000) {
     case 0x0000:
+        if (x == 0 && y == 0xc) {
+            print_opt("SCRD", "Scroll screen down by n pixels", n,
+                    CHIP8_MODE_SC8);
+            CHIP8_screen_scroll(n, CHIP8_SCROLL_DOWN);
+            machine->screen_update_status = 1;
+            machine->pc += 2;
+            break;
+        } else if (x == 0 && y == 0xd) {
+            print_opt("SCRU", "Scroll screen up by n pixels", n,
+                    CHIP8_MODE_XC8);
+            CHIP8_screen_scroll(n, CHIP8_SCROLL_UP);
+            machine->screen_update_status = 1;
+            machine->pc += 2;
+            break;
+        }
         switch (kk) {
         case 0xe0:
             print_opt("CLS", "Clear the screen", none, CHIP8_MODE_CH8);
@@ -460,22 +488,7 @@ const int32_t CHIP8_cpu_cycle() {
             machine->pc += 2;
             break;
         default:
-            if(y == 0xc) {
-                print_opt("SCRD", "Scroll screen down by n pixels", n,
-                          CHIP8_MODE_SC8);
-                CHIP8_screen_scroll(n, CHIP8_SCROLL_DOWN);
-                machine->screen_update_status = 1;
-                machine->pc += 2;
-                break;
-            } else if(y == 0xd) {
-                print_opt("SCRU", "Scroll screen up by n pixels", n,
-                          CHIP8_MODE_XC8);
-                CHIP8_screen_scroll(n, CHIP8_SCROLL_UP);
-                machine->screen_update_status = 1;
-                machine->pc += 2;
-                break;
-            } else
-                goto invalid_optcode;
+            goto invalid_optcode;
         }
         break;
     case 0x1000:
@@ -527,6 +540,7 @@ const int32_t CHIP8_cpu_cycle() {
                       xy, CHIP8_MODE_XC8);
             for (uint8_t i = x; i < y; i++)
                 machine->mem[machine->index_reg + i] = machine->reg[i];
+            machine->pc += 2;
             break;
         case 3:
             print_opt("LOADR",
@@ -534,6 +548,7 @@ const int32_t CHIP8_cpu_cycle() {
                       CHIP8_MODE_XC8);
             for (uint8_t i = x; i < y; i++)
                 machine->reg[i] = machine->mem[machine->index_reg + i];
+            machine->pc += 2;
             break;
         default:
             goto invalid_optcode;
@@ -606,17 +621,19 @@ const int32_t CHIP8_cpu_cycle() {
         machine->pc += 2;
         break;
     case 0x9000:
-        if (optcode & 0x000f)
-            goto invalid_optcode;
-        print_opt("SKRNE", "Skip next instruction if Vx != Vy", xy,
-                  CHIP8_MODE_CH8);
-        if (machine->reg[x] != machine->reg[y])
-            if (MEM_GET_WORD(machine->pc + 2) == 0xf000)
-                machine->pc += 6;
+        if (n == 0) {
+            print_opt("SKRNE", "Skip next instruction if Vx != Vy", xy,
+                      CHIP8_MODE_CH8);
+            if (machine->reg[x] != machine->reg[y])
+                if (MEM_GET_WORD(machine->pc + 2) == 0xf000)
+                    machine->pc += 6;
+                else
+                    machine->pc += 4;
             else
-                machine->pc += 4;
-        else
-            machine->pc += 2;
+                machine->pc += 2;
+        } else {
+            goto invalid_optcode;
+        }
         break;
     case 0xa000:
         print_opt("LDI", "Set I = nnn", nnn, CHIP8_MODE_CH8);
@@ -676,8 +693,6 @@ const int32_t CHIP8_cpu_cycle() {
             else
                 machine->pc += 2;
             break;
-        default:
-            goto invalid_optcode;
         }
         break;
     case 0xf000:
@@ -685,17 +700,21 @@ const int32_t CHIP8_cpu_cycle() {
             print_opt("LDI EXT", "Set I to 16bit address", none,
                       CHIP8_MODE_XH8);
             machine->index_reg = MEM_GET_WORD(machine->pc + 2);
-            printf("optcode=%4x\n", machine->index_reg);
             machine->pc += 4;
             break;
-        } else if (x == 1 && kk == 1) {
+        } else if (kk == 1) {
             print_opt("BITPLANE", "Set the bitplane to the value of x", x,
                       CHIP8_MODE_XC8);
-            machine->screen_bitplane = n;
+            machine->screen_bitplane = x;
             machine->pc += 2;
             break;
         }
         switch (kk) {
+        case 0x02:
+            print_opt("AUDIO STORE", "Store 16 bytes, starting at I, in the audio buffer", none, CHIP8_MODE_XC8);
+            print_warn("%s", "Not implemented");
+            machine->pc += 2;
+            break;
         case 0x07:
             print_opt("LDT", "Set Vx = <delay timer value>", x, CHIP8_MODE_CH8);
             machine->reg[x] = machine->timer;
@@ -751,6 +770,11 @@ const int32_t CHIP8_cpu_cycle() {
             machine->mem[machine->index_reg] = (machine->reg[x] % 1000) / 100;
             machine->mem[machine->index_reg + 1] = (machine->reg[x] % 100) / 10;
             machine->mem[machine->index_reg + 2] = (machine->reg[x] % 10) / 1;
+            machine->pc += 2;
+            break;
+        case 0x3a:
+            print_opt("PITCH", "Set the audio pattern playback rate to 4000*2^((Vx-64)/48)Hz", x, CHIP8_MODE_XC8);
+            print_warn("%s", "Not implemented");
             machine->pc += 2;
             break;
         case 0x55:
